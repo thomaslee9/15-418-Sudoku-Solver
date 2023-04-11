@@ -4,11 +4,11 @@
 // Final Project
 // Sudoku Solver
 //
-// solver-sequential main.cpp
+// solver-parallel main.cpp
 
 #include <stdio.h>
 
 
 int main(int argc, char** argv) {
-
+    
 }
