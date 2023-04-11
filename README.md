@@ -6,4 +6,4 @@
     T
 
 ## Parallelization
-    T# 15-418-Sudoku-Solver
+    T
