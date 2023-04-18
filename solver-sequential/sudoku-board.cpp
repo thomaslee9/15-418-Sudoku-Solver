@@ -130,6 +130,16 @@ void resetAllOptions(cell grid[][16]) {
 
 }
 
+void eliminateAllOptions(cell currentCell) {
+
+
+    currentCell.options[0] = 0;
+    for (int k = 1; k <= boardSize; k++) {
+        currentCell.options[k] = 0;
+    }
+
+}
+
 void resetValues(cell grid[][16]) {
     if (grid == NULL) return;
 

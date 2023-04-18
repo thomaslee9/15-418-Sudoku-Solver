@@ -65,6 +65,7 @@ int tryElimination(board myBoard, std::stack<board> boardStack) {
 
     if (getZero(myBoard, coords)) {
         cell current = myBoard.grid[coords[0]][coords[1]];
+        // if only one option for cell, fill in cell with that option
         if (current.options[0] == 1) {
             for (int i = 1; i <= boardSize; i++) {
                 if (current.options[i] == 1) {
@@ -80,7 +81,6 @@ int tryElimination(board myBoard, std::stack<board> boardStack) {
             cell newCell = current;
             newCell.val = singleOption;
             newBoard.grid[coords[0]][coords[1]] = newCell;
-            boardStack.push(myBoard);
             boardStack.push(newBoard);
         } else {
             // cannot perform elimination, try next phase
@@ -113,11 +113,12 @@ int main(int argc, char** argv) {
        // }
         boardStack.pop();
         int coords[2] = {-1,-1};
-
-        if (phase == 0) {
+        // elimination phase = 0
+        if (getZero(sudoku, coords) && phase == 0) {
             phase = tryElimination(sudoku, boardStack);
             std::cout << "did elimination" << " \n";
         }
+        // default to backtracking phase = 1
         else if (getZero(sudoku, coords) && phase == 1) {
             std::cout << "got here" << " ";
             cell current = sudoku.grid[coords[0]][coords[1]];
@@ -133,6 +134,7 @@ int main(int argc, char** argv) {
                             board newBoard = sudoku;
                             cell newCell = current;
                             newCell.val = i;
+                            eliminateAllOptions(newCell);
                             newBoard.grid[coords[0]][coords[1]] = newCell;
                             boardStack.push(sudoku);
                             boardStack.push(newBoard);
