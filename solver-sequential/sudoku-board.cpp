@@ -2,6 +2,8 @@
 
 #include "sudoku-board.h"
 #include <cmath>
+#include <iostream>
+
 
 int boardSize = 16;
 
@@ -17,6 +19,37 @@ int getBoxCol(int col) {
 
     int result = col / bdim;
     return result;
+}
+
+bool noneInBox(board myBoard, int value, int row, int col) {
+               
+    int bdim = sqrt(boardSize);
+    int brow = getBoxRow(row);
+    int bcol = getBoxCol(col);
+ 
+    for (int i = bcol * bdim; i < (bcol + 1) * bdim; i++) {
+        for (int j = brow * bdim; j < (brow + 1) * bdim; j++) {
+            if (myBoard.grid[j][i].val == value) return false;
+        }
+    }
+    return true;
+
+}
+
+bool noneInRow(board myBoard, int value, int row) {
+
+    for (int i = 0; i < boardSize; i++) {
+        if (myBoard.grid[row][i].val == value) return false;
+    }
+    return true;
+}
+
+bool noneInCol(board myBoard, int value, int col) {
+
+    for (int i = 0; i < boardSize; i++) {
+        if (myBoard.grid[i][col].val == value) return false;
+    }
+    return true;
 }
 
 bool uniqueInBox(board myBoard, int value, int row, int col) {
