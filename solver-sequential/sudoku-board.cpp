@@ -52,6 +52,27 @@ bool noneInCol(board myBoard, int value, int col) {
     return true;
 }
 
+board reduceOptions(board myBoard, int value, int row, int col) {
+    for (int i = 0; i < boardSize; i++) {
+        if (i != row) myBoard.grid[i][col].options[0]-= myBoard.grid[i][col].options[value];
+        if (i != col) myBoard.grid[row][i].options[0]-= myBoard.grid[row][i].options[value];
+        myBoard.grid[i][col].options[value] = 0;
+        myBoard.grid[row][i].options[value] = 0;
+
+    }
+    int bdim = sqrt(boardSize);
+    int brow = getBoxRow(row);
+    int bcol = getBoxCol(col);
+    for (int i = bcol * bdim; i < (bcol + 1) * bdim; i++) {
+        for (int j = brow * bdim; j < (brow + 1) * bdim; j++) {
+            if (i != col && j != row) myBoard.grid[j][i].options[0]-=myBoard.grid[j][i].options[value];
+            myBoard.grid[j][i].options[value] = 0;
+        }
+    }
+    return myBoard;
+}
+
+
 bool uniqueInBox(board myBoard, int value, int row, int col) {
     int bdim = sqrt(boardSize);
     int count = 0;
@@ -126,16 +147,6 @@ void resetAllOptions(cell grid[][16]) {
                 grid[i][j].options[k] = 1;
             }
         }
-    }
-
-}
-
-void eliminateAllOptions(cell currentCell) {
-
-
-    currentCell.options[0] = 0;
-    for (int k = 1; k <= boardSize; k++) {
-        currentCell.options[k] = 0;
     }
 
 }
