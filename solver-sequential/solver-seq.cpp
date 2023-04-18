@@ -56,6 +56,45 @@ bool getZero(board current, int coords[2]) {
     return false;
 }
 
+int tryElimination(board myBoard, std::stack<board> boardStack) {
+    int phase = 0;
+
+    int singleOption = 0;
+
+    int coords[2] = {-1,-1};
+
+    if (getZero(myBoard, coords)) {
+        cell current = myBoard.grid[coords[0]][coords[1]];
+        if (current.options[0] == 1) {
+            for (int i = 1; i <= boardSize; i++) {
+                if (current.options[i] == 1) {
+                    singleOption = i;
+                    break;
+                }
+            }
+
+            current.options[singleOption] = 0;
+            current.options[0]--;
+            myBoard.grid[coords[0]][coords[1]] = current;
+            board newBoard = myBoard;
+            cell newCell = current;
+            newCell.val = singleOption;
+            newBoard.grid[coords[0]][coords[1]] = newCell;
+            boardStack.push(myBoard);
+            boardStack.push(newBoard);
+        } else {
+            // cannot perform elimination, try next phase
+            boardStack.push(myBoard);
+            phase = 1;
+        }
+    } else {
+        // no free cells, proceed to end board as it is solved
+        boardStack.push(myBoard);
+        phase = 1;
+    }
+
+    return phase;
+}
 
 int main(int argc, char** argv) {
     board initial;
@@ -64,6 +103,8 @@ int main(int argc, char** argv) {
     std::string filename = "test2.txt";
     loadFromFile(filename, initial);
     boardStack.push(initial);
+
+    int phase = 0;
     while (!boardStack.empty()) {
         //std::cout << boardStack.size() << "\n";
         board sudoku = boardStack.top();
@@ -72,7 +113,13 @@ int main(int argc, char** argv) {
        // }
         boardStack.pop();
         int coords[2] = {-1,-1};
-        if (getZero(sudoku, coords)) {
+
+        if (phase == 0) {
+            phase = tryElimination(sudoku, boardStack);
+            std::cout << "did elimination" << " \n";
+        }
+        else if (getZero(sudoku, coords) && phase == 1) {
+            std::cout << "got here" << " ";
             cell current = sudoku.grid[coords[0]][coords[1]];
             if (current.options[0] == 0) continue;
             for (int i = 1; i <= boardSize; i++) {
@@ -105,7 +152,8 @@ int main(int argc, char** argv) {
             printBoard(sudoku);
             break;
         }
-    if (boardStack.empty()) printBoard(sudoku);
+
+        if (boardStack.empty()) printBoard(sudoku);
     }
     if (!solved) std::cout << "Couldn't solve. Consider checking this algorithm for errors.\n";
     return 0;
