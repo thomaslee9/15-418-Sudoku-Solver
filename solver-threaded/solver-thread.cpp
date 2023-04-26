@@ -1,6 +1,6 @@
-// solver-seq.cpp
+// solver-thread.cpp
 //
-// compile:  g++ solver-seq.cpp
+// compile:  g++ solver-thread.cpp
 // executable:  ./a.out
 
 #include "sudoku-board.cpp"
