@@ -1,0 +1,7 @@
+15-418 Final Project
+Parallelized Sudoku Solver
+thomasle  amikhale
+
+Many of our tests come from this website:
+
+T
