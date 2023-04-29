@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
                 auto end = std::chrono::steady_clock::now();
                 std::cout << "Solved!\n";
                 std::chrono::duration<double> timeElapsed = end-start;
-                std::cout << "Time Elapsed (sec): [ " << timeElapsed.count() << " ]\n";
+                std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
                 printBoard(sudoku);
                 exit(0);
             }
