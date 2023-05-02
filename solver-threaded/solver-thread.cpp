@@ -17,7 +17,8 @@
 #include <stack>
 #include <omp.h>
 
-std::mutex stackLock;
+omp_lock_t stackLock;
+
 
 bool loadFromFile(std::string fileName,
                   board &myBoard) {
@@ -103,9 +104,9 @@ void eliminate(board myBoard, std::stack<board> *boardStack, int coords[2]) {
             myBoard.grid[coords[0]][coords[1]].val = i;
             myBoard = reduceOptions(myBoard,i,coords[0],coords[1]);
 
-            stackLock.lock();
+            omp_set_lock (&stackLock);
             boardStack->push(myBoard);
-            stackLock.unlock();
+            omp_unset_lock (&stackLock);
 
             break;
         }
@@ -138,7 +139,8 @@ int main(int argc, char** argv) {
     board initial;
     bool solved = false;
     std::stack<board> boardStack;
-    std::string filename = "test-medium-1.txt";
+    omp_init_lock (&stackLock);
+    std::string filename = "test-hard-1.txt";
     loadFromFile(filename, initial);
     initial = reduceBoardOptions(initial);
     boardStack.push(initial);
@@ -148,57 +150,67 @@ int main(int argc, char** argv) {
     board sudoku;
     cell current;
 
+
+    //alt loop definition:  #pragma omp parallel for
+    //                      for (int j = 0; j <= 100000000000; j++){ 
+
     #pragma omp parallel 
     {
-        while (!boardStack.empty()) { 
-            stackLock.lock();
-            board sudoku = boardStack.top();
-            boardStack.pop();
-            stackLock.unlock();
+        while (!boardStack.empty() && !solved) {
+        if (!solved) {
+            omp_set_lock (&stackLock);
+            if (!boardStack.empty()) {
+                board sudoku = boardStack.top();
+                boardStack.pop();
+                omp_unset_lock (&stackLock);
 
-            int coords[2] = {-1,-1};
-            if (getZero(sudoku, coords)) {
-                cell current = sudoku.grid[coords[0]][coords[1]];
-                if (current.options[0] == 0) continue;
-                else if (current.options[0] == 1) {
-                    eliminate(sudoku,&boardStack,coords);
-                    continue;
-                }
-                for (int i = 1; i <= boardSize; i++) {
-                    if (current.options[i] == 1) {
-                        current.options[i] = 0;
-                        current.options[0]--;
-                        sudoku.grid[coords[0]][coords[1]] = current;
-                        board newBoard = sudoku;
-                        cell newCell = current;
-                        newCell.val = i;
-                        newBoard.grid[coords[0]][coords[1]] = newCell;
-                        newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
+                int coords[2] = {-1,-1};
+                if (getZero(sudoku, coords)) {
+                    cell current = sudoku.grid[coords[0]][coords[1]];
+                    if (current.options[0] == 0) continue;
+                    else if (current.options[0] == 1) {
+                        eliminate(sudoku,&boardStack,coords);
+                        continue;
+                    }
+                    for (int i = 1; i <= boardSize; i++) {
+                        if (current.options[i] == 1) {
+                            current.options[i] = 0;
+                            current.options[0]--;
+                            sudoku.grid[coords[0]][coords[1]] = current;
+                            board newBoard = sudoku;
+                            cell newCell = current;
+                            newCell.val = i;
+                            newBoard.grid[coords[0]][coords[1]] = newCell;
+                            newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
 
-                        stackLock.lock();
-                        boardStack.push(sudoku);
-                        boardStack.push(newBoard);
-                        stackLock.unlock();
+                            omp_set_lock (&stackLock);
+                            boardStack.push(sudoku);
+                            boardStack.push(newBoard);
+                            omp_unset_lock (&stackLock);
 
-                        break;
+                            break;
+                        }
                     }
                 }
+                else {
+                    solved = true;
+                    #pragma omp flush(solved)
+                    auto end = std::chrono::steady_clock::now();
+                    std::cout << "Solved!\n";
+                    std::chrono::duration<double> timeElapsed = end-start;
+                    std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+                    printBoard(sudoku);
+                    exit(0);
+                }
             }
-            else {
-                solved = true;
-                auto end = std::chrono::steady_clock::now();
-                std::cout << "Solved!\n";
-                std::chrono::duration<double> timeElapsed = end-start;
-                std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
-                printBoard(sudoku);
-                exit(0);
-            }
-            if (boardStack.empty()) printBoard(sudoku);
+        else omp_unset_lock (&stackLock);
+        }
         }
     }
 
     if (!solved) std::cout << "Couldn't solve. Consider checking this algorithm for errors.\n";
-
+    
+    omp_destroy_lock (&stackLock);
     return 0;
 }
 
