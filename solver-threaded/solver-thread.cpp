@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
     bool solved = false;
     std::stack<board> boardStack;
     omp_init_lock (&stackLock);
-    std::string filename = "test-hard-1.txt";
+    std::string filename = "test-medium-1.txt";
     loadFromFile(filename, initial);
     initial = reduceBoardOptions(initial);
     boardStack.push(initial);
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
     //alt loop definition:  #pragma omp parallel for
     //                      for (int j = 0; j <= 100000000000; j++){ 
 
-    #pragma omp parallel 
+    #pragma omp parallel private(sudoku, current) shared(boardStack)
     {
         while (!boardStack.empty() && !solved) {
         if (!solved) {
@@ -196,9 +196,12 @@ int main(int argc, char** argv) {
                     solved = true;
                     #pragma omp flush(solved)
                     auto end = std::chrono::steady_clock::now();
-                    std::cout << "Solved!\n";
+                    std::cout << "           Solved!\n";
+                    std::cout << "================================\n";
+                    std::cout << "Puzzle: " << filename << "\n";
                     std::chrono::duration<double> timeElapsed = end-start;
                     std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+                    std::cout << "================================\n";
                     printBoard(sudoku);
                     exit(0);
                 }

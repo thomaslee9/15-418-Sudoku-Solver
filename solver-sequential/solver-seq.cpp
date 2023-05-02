@@ -170,9 +170,12 @@ int main(int argc, char** argv) {
         else {
             solved = true;
             auto end = std::chrono::steady_clock::now();
-            std::cout << "Solved!\n";
+            std::cout << "           Solved!\n";
+            std::cout << "================================\n";
+            std::cout << "Puzzle: " << filename << "\n";
             std::chrono::duration<double> timeElapsed = end-start;
             std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+            std::cout << "================================\n";
             printBoard(sudoku);
             break;
         }
