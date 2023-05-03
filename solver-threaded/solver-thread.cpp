@@ -86,7 +86,6 @@ bool getZero(board current, int coords[2]) {
 }
 
 board reduceBoardOptions(board current) {
-    #pragma omp parallel for
     for (int i = 0; i < boardSize; i++) {
         for (int j = 0; j < boardSize; j++) {
             int value = current.grid[i][j].val;
@@ -114,7 +113,20 @@ void eliminate(board myBoard, std::stack<board> *boardStack, int coords[2]) {
     }
 }
 
+void eliminateLocal(board myBoard, std::stack<board> *localStack, int coords[2]) {
+    cell current = myBoard.grid[coords[0]][coords[1]];
+    // only one option for cell, so fill in cell with that option
+    for (int i = 1; i <= boardSize; i++) {
+        if (current.options[i] == 1) {
+            myBoard.grid[coords[0]][coords[1]].val = i;
+            myBoard = reduceOptions(myBoard,i,coords[0],coords[1]);
 
+            localStack->push(myBoard);
+
+            break;
+        }
+    }
+}
 
 void uniqueOption(board myBoard, std::stack<board> *boardStack, int coords[2]) {
     cell current = myBoard.grid[coords[0]][coords[1]];
@@ -141,25 +153,21 @@ int main(int argc, char** argv) {
     bool solved = false;
     std::stack<board> boardStack;
     omp_init_lock (&stackLock);
-    std::string filename = "test2.txt";
+    std::string filename = "test-medium-1.txt";
     loadFromFile(filename, initial);
 
     auto start = std::chrono::steady_clock::now();
     initial = reduceBoardOptions(initial);
     boardStack.push(initial);
-    //auto start = std::chrono::steady_clock::now();
 
-    //std::mutex stackLock;
     board sudoku;
     cell current;
+    std::stack<board> localStack;
 
-
-    //alt loop definition:  #pragma omp parallel for
-    //                      for (int j = 0; j <= 100000000000; j++){ 
-
-    #pragma omp parallel private(sudoku, current) shared(solved, boardStack)
+    #pragma omp parallel private(sudoku, current, localStack) shared(boardStack)
     {
-        while (!boardStack.empty() && !solved) {
+        // originally !boardStack.empty() && !solved
+        while (!solved) {
         if (!solved) {
             omp_set_lock (&stackLock);
             if (!boardStack.empty()) {
@@ -186,13 +194,87 @@ int main(int argc, char** argv) {
                             newBoard.grid[coords[0]][coords[1]] = newCell;
                             newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
 
-                            omp_set_lock (&stackLock);
-                            boardStack.push(sudoku);
-                            boardStack.push(newBoard);
-                            omp_unset_lock (&stackLock);
+                            // omp_set_lock (&stackLock);
+                            // boardStack.push(sudoku);
+                            // boardStack.push(newBoard);
+                            // omp_unset_lock (&stackLock);
 
+                            localStack.push(sudoku);
+                            localStack.push(newBoard);
                             break;
+                            //printBoard(newBoard);
+
                         }
+                    }
+                    if (localStack.size() > 10) {
+                        omp_set_lock (&stackLock);
+                        while (!localStack.empty()) {
+                            board item = localStack.top();
+                            boardStack.push(item);
+                            localStack.pop();
+                        }
+                        omp_unset_lock (&stackLock);
+                    }
+                }
+                else {
+                    solved = true;
+                    #pragma omp flush(solved)
+                    auto end = std::chrono::steady_clock::now();
+                    std::cout << "           Solved!\n";
+                    std::cout << "================================\n";
+                    std::cout << "Puzzle: " << filename << "\n";
+                    std::cout << "Threadcount: " << omp_get_num_threads() << "\n";
+                    std::chrono::duration<double> timeElapsed = end-start;
+                    std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+                    std::cout << "================================\n";
+                    printBoard(sudoku);
+                    exit(0);
+                }
+            }
+            else if (!localStack.empty()) {
+                omp_unset_lock (&stackLock);
+                board sudoku = localStack.top();
+                localStack.pop();
+
+                int coords[2] = {-1,-1};
+                if (getZero(sudoku, coords)) {
+                    cell current = sudoku.grid[coords[0]][coords[1]];
+                    if (current.options[0] == 0) continue;
+                    else if (current.options[0] == 1) {
+                        eliminateLocal(sudoku,&localStack,coords);
+                        continue;
+                    }
+                    for (int i = 1; i <= boardSize; i++) {
+                        if (current.options[i] == 1) {
+                            current.options[i] = 0;
+                            current.options[0]--;
+                            sudoku.grid[coords[0]][coords[1]] = current;
+                            board newBoard = sudoku;
+                            cell newCell = current;
+                            newCell.val = i;
+                            newBoard.grid[coords[0]][coords[1]] = newCell;
+                            newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
+
+                            // omp_set_lock (&stackLock);
+                            // boardStack.push(sudoku);
+                            // boardStack.push(newBoard);
+                            // omp_unset_lock (&stackLock);
+
+                            localStack.push(sudoku);
+                            localStack.push(newBoard);
+                            break;
+                            //printBoard(newBoard);
+
+                        }
+                    }
+                    if (localStack.size() > 10) {
+                        omp_set_lock (&stackLock);
+                        while (!localStack.empty()) {
+                            board item = localStack.top();
+                            boardStack.push(item);
+                            localStack.pop();
+                        }
+                    omp_unset_lock (&stackLock);
                     }
                 }
                 else {

@@ -85,7 +85,7 @@ bool uniqueInBox(board myBoard, int value, int row, int col) {
 
     for (int i = bcol * bdim; i < (bcol + 1) * bdim; i++) {
         for (int j = brow * bdim; j < (brow + 1) * bdim; j++) {
-            if (myBoard.grid[i][j].val == value) count++;
+            if (myBoard.grid[j][i].val == value) count++;
             if (count > 1) return false;
         }
     }
@@ -99,7 +99,7 @@ bool uniqueInRow(board myBoard, int value, int row) {
     if (row < 0 || row >= boardSize) return false;
 
     for (int i = 0; i < boardSize; i++) {
-        if (myBoard.grid[i][row].val == value) count++;
+        if (myBoard.grid[row][i].val == value) count++;
         if (count > 1) return false;
     }
 
@@ -112,7 +112,7 @@ bool uniqueInCol(board myBoard, int value, int col) {
     if (col < 0 || col >= boardSize) return false;
 
     for (int i = 0; i < boardSize; i++) {
-        if (myBoard.grid[col][i].val == value) count++;
+        if (myBoard.grid[i][col].val == value) count++;
         if (count > 1) return false;
     }
 

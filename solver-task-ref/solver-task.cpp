@@ -1,9 +1,10 @@
-// solver-seq.cpp
+// solver-task.cpp
 //
-// compile:  g++ solver-seq.cpp
-// executable:  ./a.out
+// compile:  make
+// executable:  ./solver-task
 
 #include <chrono>
+#include <mutex>
 
 #include "sudoku-board.cpp"
 #include <cmath>
@@ -14,6 +15,13 @@
 #include <sstream>
 #include <cassert>
 #include <stack>
+#include <omp.h>
+
+omp_lock_t stackLock;
+
+std::string filename = "test-medium-1.txt";
+auto start = std::chrono::steady_clock::now();
+
 
 bool loadFromFile(std::string fileName,
                   board &myBoard) {
@@ -98,13 +106,15 @@ void eliminate(board myBoard, std::stack<board> *boardStack, int coords[2]) {
         if (current.options[i] == 1) {
             myBoard.grid[coords[0]][coords[1]].val = i;
             myBoard = reduceOptions(myBoard,i,coords[0],coords[1]);
+
+            omp_set_lock (&stackLock);
             boardStack->push(myBoard);
+            omp_unset_lock (&stackLock);
+
             break;
         }
     }
 }
-
-// old uniqueOption helper functions code was here
 
 void uniqueOption(board myBoard, std::stack<board> *boardStack, int coords[2]) {
     cell current = myBoard.grid[coords[0]][coords[1]];
@@ -119,7 +129,6 @@ void uniqueOption(board myBoard, std::stack<board> *boardStack, int coords[2]) {
             if (fullyUniqueOption(myBoard, i, coords[0], coords[1])) {
                 myBoard.grid[coords[0]][coords[1]].val = i;
                 myBoard.grid[coords[0]][coords[1]].options[0] = 0;
-                //myBoard = reduceOptions(myBoard,i,coords[0],coords[1]);
                 boardStack->push(myBoard);
                 return;
             }
@@ -127,63 +136,81 @@ void uniqueOption(board myBoard, std::stack<board> *boardStack, int coords[2]) {
     }
 }
 
+bool noneInGroup(board sudoku, int value, int coords[2]) {
+    return (noneInRow(sudoku, value, coords[0]) &&
+            noneInCol(sudoku, value, coords[1]) &&
+            noneInBox(sudoku, value, coords[0], coords[1]));
+}
+
+bool sudokuTasks(board sudoku, int idx) {
+    int coords[2] = {-1,-1};
+    if (idx == (boardSize * boardSize - 1)) return true;
+    int row = idx / boardSize;
+    int col = idx % boardSize;
+    if (sudoku.grid[row][col].val > 0) return sudokuTasks(sudoku, idx+1);
+    coords[0] = row;
+    coords[1] = col;
+
+    for (int n = 1; n <= boardSize; n++) {
+        if (noneInGroup(sudoku, n, coords)) {
+            bool done = false;
+            #pragma omp task firstprivate(sudoku, coords, n)
+            {
+                board newBoard;
+                for (int i = 0; i < boardSize; i++) {
+                    for (int j = 0; j < boardSize; j++) {
+                        newBoard.grid[i][j].val = sudoku.grid[i][j].val;
+                    }
+                }
+                newBoard.grid[coords[0]][coords[1]].val = n;
+               
+                done = sudokuTasks(newBoard, idx+1);
+                
+                if (done) {
+                    auto end = std::chrono::steady_clock::now();
+                    std::cout << "           Solved!\n";
+                    std::cout << "================================\n";
+                    std::cout << "Puzzle: " << filename << "\n";
+                    std::chrono::duration<double> timeElapsed = end-start;
+                    std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+                    std::cout << "================================\n";
+                    printBoard(sudoku);
+                    exit(0);
+                }
+            }
+
+            if (done) {
+                return true;
+            }
+
+            sudoku.grid[coords[0]][coords[1]].val = 0;
+        }
+    }
+
+    #pragma omp taskwait
+
+    return false;
+}
+
 int main(int argc, char** argv) {
     board initial;
     bool solved = false;
-    std::stack<board> boardStack;
-    std::string filename = "test-medium-0.txt";
+    
+    //std::string filename = "test-medium-1.txt";
     loadFromFile(filename, initial);
 
-    auto start = std::chrono::steady_clock::now();
-    initial = reduceBoardOptions(initial);
-    boardStack.push(initial);
     //auto start = std::chrono::steady_clock::now();
+    start = std::chrono::steady_clock::now();
 
-    while (!boardStack.empty()) {
-        board sudoku = boardStack.top();
-        boardStack.pop();
-        int coords[2] = {-1,-1};
-        if (getZero(sudoku, coords)) {
-            cell current = sudoku.grid[coords[0]][coords[1]];
-            if (current.options[0] == 0) continue;
-            else if (current.options[0] == 1) {
-                eliminate(sudoku,&boardStack,coords);
-                continue;
-            }
-            // else if (current.options[0] > 1) {
-            //     if (current.val > 0) continue;
-            //     uniqueOption(sudoku,&boardStack,coords);
-            // }
-            for (int i = 1; i <= boardSize; i++) {
-                if (current.options[i] == 1) {
-                    current.options[i] = 0;
-                    current.options[0]--;
-                    sudoku.grid[coords[0]][coords[1]] = current;
-                    board newBoard = sudoku;
-                    cell newCell = current;
-                    newCell.val = i;
-                    newBoard.grid[coords[0]][coords[1]] = newCell;
-                    newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
-                    boardStack.push(sudoku);
-                    boardStack.push(newBoard);
-                    break;
-                }
-            }
-        }
-        else {
-            solved = true;
-            auto end = std::chrono::steady_clock::now();
-            std::cout << "           Solved!\n";
-            std::cout << "================================\n";
-            std::cout << "Puzzle: " << filename << "\n";
-            std::chrono::duration<double> timeElapsed = end-start;
-            std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
-            std::cout << "================================\n";
-            printBoard(sudoku);
-            break;
-        }
-    if (boardStack.empty()) printBoard(sudoku);
+    #pragma omp parallel 
+    {
+        #pragma omp single nowait
+        sudokuTasks(initial, 0);
     }
+
     if (!solved) std::cout << "Couldn't solve. Consider checking this algorithm for errors.\n";
+    
+    omp_destroy_lock (&stackLock);
     return 0;
 }
+
