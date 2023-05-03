@@ -131,11 +131,14 @@ int main(int argc, char** argv) {
     board initial;
     bool solved = false;
     std::stack<board> boardStack;
-    std::string filename = "test-medium-1.txt";
+    std::string filename = "test2.txt";
     loadFromFile(filename, initial);
+
+    auto start = std::chrono::steady_clock::now();
     initial = reduceBoardOptions(initial);
     boardStack.push(initial);
-    auto start = std::chrono::steady_clock::now();
+    //auto start = std::chrono::steady_clock::now();
+
     while (!boardStack.empty()) {
         board sudoku = boardStack.top();
         boardStack.pop();

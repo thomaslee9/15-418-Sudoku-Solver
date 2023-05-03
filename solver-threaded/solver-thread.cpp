@@ -86,6 +86,7 @@ bool getZero(board current, int coords[2]) {
 }
 
 board reduceBoardOptions(board current) {
+    #pragma omp parallel for
     for (int i = 0; i < boardSize; i++) {
         for (int j = 0; j < boardSize; j++) {
             int value = current.grid[i][j].val;
@@ -140,11 +141,13 @@ int main(int argc, char** argv) {
     bool solved = false;
     std::stack<board> boardStack;
     omp_init_lock (&stackLock);
-    std::string filename = "test-medium-1.txt";
+    std::string filename = "test2.txt";
     loadFromFile(filename, initial);
+
+    auto start = std::chrono::steady_clock::now();
     initial = reduceBoardOptions(initial);
     boardStack.push(initial);
-    auto start = std::chrono::steady_clock::now();
+    //auto start = std::chrono::steady_clock::now();
 
     //std::mutex stackLock;
     board sudoku;
@@ -154,7 +157,7 @@ int main(int argc, char** argv) {
     //alt loop definition:  #pragma omp parallel for
     //                      for (int j = 0; j <= 100000000000; j++){ 
 
-    #pragma omp parallel private(sudoku, current) shared(boardStack)
+    #pragma omp parallel private(sudoku, current) shared(solved, boardStack)
     {
         while (!boardStack.empty() && !solved) {
         if (!solved) {
