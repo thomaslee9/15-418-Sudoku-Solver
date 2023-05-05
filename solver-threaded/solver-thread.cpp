@@ -281,6 +281,7 @@ int main(int argc, char** argv) {
                         auto end = std::chrono::steady_clock::now();
                         std::cout << "           Solved!\n";
                         std::cout << "================================\n";
+                        std::cout << "Threaded Version\n";
                         std::cout << "Puzzle: " << filename << "\n";
                         std::cout << "Threadcount: " << omp_get_num_threads() << "\n";
                         std::chrono::duration<double> timeElapsed = end-start;

@@ -150,10 +150,6 @@ int main(int argc, char** argv) {
                 eliminate(sudoku,&boardStack,coords);
                 continue;
             }
-            // else if (current.options[0] > 1) {
-            //     if (current.val > 0) continue;
-            //     uniqueOption(sudoku,&boardStack,coords);
-            // }
             for (int i = 1; i <= boardSize; i++) {
                 if (current.options[i] == 1) {
                     current.options[i] = 0;
@@ -175,6 +171,7 @@ int main(int argc, char** argv) {
             auto end = std::chrono::steady_clock::now();
             std::cout << "           Solved!\n";
             std::cout << "================================\n";
+            std::cout << "Sequential Version\n";
             std::cout << "Puzzle: " << filename << "\n";
             std::chrono::duration<double> timeElapsed = end-start;
             std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
