@@ -1,7 +1,7 @@
 // solver-thread.cpp
 //
-// compile:  g++ solver-thread.cpp
-// executable:  ./a.out
+// compile:     make
+// executable:  ./solver-thread
 
 // final version 0
 

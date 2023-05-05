@@ -1,7 +1,7 @@
 // solver-seq.cpp
 //
-// compile:  g++ solver-seq.cpp
-// executable:  ./a.out
+// compile:     make
+// executable:  ./solver-seq
 
 #include <chrono>
 
