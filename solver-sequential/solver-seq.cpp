@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
     board initial;
     bool solved = false;
     std::stack<board> boardStack;
-    std::string filename = "test-medium-0.txt";
+    std::string filename = "test-medium-2.txt";
     loadFromFile(filename, initial);
 
     auto start = std::chrono::steady_clock::now();

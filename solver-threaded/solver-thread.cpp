@@ -3,6 +3,8 @@
 // compile:  g++ solver-thread.cpp
 // executable:  ./a.out
 
+// final version 0
+
 #include <chrono>
 #include <mutex>
 
@@ -153,7 +155,7 @@ int main(int argc, char** argv) {
     bool solved = false;
     std::stack<board> boardStack;
     omp_init_lock (&stackLock);
-    std::string filename = "test-medium-1.txt";
+    std::string filename = "test-medium-0.txt";
     loadFromFile(filename, initial);
 
     auto start = std::chrono::steady_clock::now();
@@ -163,137 +165,135 @@ int main(int argc, char** argv) {
     board sudoku;
     cell current;
     std::stack<board> localStack;
+    std::stack<board> reverseStack;
 
-    #pragma omp parallel private(sudoku, current, localStack) shared(boardStack)
+
+    #pragma omp parallel private(sudoku, current, localStack, reverseStack) shared(boardStack)
     {
-        // originally !boardStack.empty() && !solved
         while (!solved) {
-        if (!solved) {
-            omp_set_lock (&stackLock);
-            if (!boardStack.empty()) {
-                board sudoku = boardStack.top();
-                boardStack.pop();
-                omp_unset_lock (&stackLock);
-
-                int coords[2] = {-1,-1};
-                if (getZero(sudoku, coords)) {
-                    cell current = sudoku.grid[coords[0]][coords[1]];
-                    if (current.options[0] == 0) continue;
-                    else if (current.options[0] == 1) {
-                        eliminate(sudoku,&boardStack,coords);
-                        continue;
-                    }
-                    for (int i = 1; i <= boardSize; i++) {
-                        if (current.options[i] == 1) {
-                            current.options[i] = 0;
-                            current.options[0]--;
-                            sudoku.grid[coords[0]][coords[1]] = current;
-                            board newBoard = sudoku;
-                            cell newCell = current;
-                            newCell.val = i;
-                            newBoard.grid[coords[0]][coords[1]] = newCell;
-                            newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
-
-                            // omp_set_lock (&stackLock);
-                            // boardStack.push(sudoku);
-                            // boardStack.push(newBoard);
-                            // omp_unset_lock (&stackLock);
-
-                            localStack.push(sudoku);
-                            localStack.push(newBoard);
-                            break;
-                            //printBoard(newBoard);
-
-                        }
-                    }
-                    if (localStack.size() > 10) {
-                        omp_set_lock (&stackLock);
-                        while (!localStack.empty()) {
-                            board item = localStack.top();
-                            boardStack.push(item);
-                            localStack.pop();
-                        }
-                        omp_unset_lock (&stackLock);
-                    }
-                }
-                else {
-                    solved = true;
-                    #pragma omp flush(solved)
-                    auto end = std::chrono::steady_clock::now();
-                    std::cout << "           Solved!\n";
-                    std::cout << "================================\n";
-                    std::cout << "Puzzle: " << filename << "\n";
-                    std::cout << "Threadcount: " << omp_get_num_threads() << "\n";
-                    std::chrono::duration<double> timeElapsed = end-start;
-                    std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
-                    std::cout << "================================\n";
-                    printBoard(sudoku);
-                    exit(0);
-                }
-            }
-            else if (!localStack.empty()) {
-                omp_unset_lock (&stackLock);
-                board sudoku = localStack.top();
-                localStack.pop();
-
-                int coords[2] = {-1,-1};
-                if (getZero(sudoku, coords)) {
-                    cell current = sudoku.grid[coords[0]][coords[1]];
-                    if (current.options[0] == 0) continue;
-                    else if (current.options[0] == 1) {
-                        eliminateLocal(sudoku,&localStack,coords);
-                        continue;
-                    }
-                    for (int i = 1; i <= boardSize; i++) {
-                        if (current.options[i] == 1) {
-                            current.options[i] = 0;
-                            current.options[0]--;
-                            sudoku.grid[coords[0]][coords[1]] = current;
-                            board newBoard = sudoku;
-                            cell newCell = current;
-                            newCell.val = i;
-                            newBoard.grid[coords[0]][coords[1]] = newCell;
-                            newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
-
-                            // omp_set_lock (&stackLock);
-                            // boardStack.push(sudoku);
-                            // boardStack.push(newBoard);
-                            // omp_unset_lock (&stackLock);
-
-                            localStack.push(sudoku);
-                            localStack.push(newBoard);
-                            break;
-                            //printBoard(newBoard);
-
-                        }
-                    }
-                    if (localStack.size() > 10) {
-                        omp_set_lock (&stackLock);
-                        while (!localStack.empty()) {
-                            board item = localStack.top();
-                            boardStack.push(item);
-                            localStack.pop();
-                        }
+            if (!solved) {
+                omp_set_lock (&stackLock);
+                if (localStack.empty() && !boardStack.empty() ) {
+                    board sudoku = boardStack.top();
+                    boardStack.pop();
                     omp_unset_lock (&stackLock);
+
+                    int coords[2] = {-1,-1};
+                    if (getZero(sudoku, coords)) {
+                        cell current = sudoku.grid[coords[0]][coords[1]];
+                        if (current.options[0] == 0) continue;
+                        else if (current.options[0] == 1) {
+                            eliminate(sudoku,&boardStack,coords);
+                            continue;
+                        }
+                        for (int i = 1; i <= boardSize; i++) {
+                            if (current.options[i] == 1) {
+                                current.options[i] = 0;
+                                current.options[0]--;
+                                sudoku.grid[coords[0]][coords[1]] = current;
+                                board newBoard = sudoku;
+                                cell newCell = current;
+                                newCell.val = i;
+                                newBoard.grid[coords[0]][coords[1]] = newCell;
+                                newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
+
+                                localStack.push(sudoku);
+                                localStack.push(newBoard);
+                                break;
+
+                            }
+                        }
+                        if (localStack.size() > 20) {
+                            omp_set_lock (&stackLock);
+                            while (!localStack.empty()) {
+                                board item = localStack.top();
+                                boardStack.push(item);
+                                localStack.pop();
+                            }
+                            omp_unset_lock (&stackLock);
+                        }
+                    }
+                    else {
+                        solved = true;
+                        #pragma omp flush(solved)
+                        #pragma omp cancel parallel
+                        auto end = std::chrono::steady_clock::now();
+                        std::cout << "           Solved!\n";
+                        std::cout << "================================\n";
+                        std::cout << "Puzzle: " << filename << "\n";
+                        std::cout << "Threadcount: " << omp_get_num_threads() << "\n";
+                        std::chrono::duration<double> timeElapsed = end-start;
+                        std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+                        std::cout << "================================\n";
+                        printBoard(sudoku);
+                        exit(0);
                     }
                 }
-                else {
-                    solved = true;
-                    #pragma omp flush(solved)
-                    auto end = std::chrono::steady_clock::now();
-                    std::cout << "           Solved!\n";
-                    std::cout << "================================\n";
-                    std::cout << "Puzzle: " << filename << "\n";
-                    std::chrono::duration<double> timeElapsed = end-start;
-                    std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
-                    std::cout << "================================\n";
-                    printBoard(sudoku);
-                    exit(0);
+                else if (!localStack.empty()) {
+                    omp_unset_lock (&stackLock);
+                    board sudoku = localStack.top();
+                    localStack.pop();
+
+                    int coords[2] = {-1,-1};
+                    if (getZero(sudoku, coords)) {
+                        cell current = sudoku.grid[coords[0]][coords[1]];
+                        if (current.options[0] == 0) continue;
+                        else if (current.options[0] == 1) {
+                            eliminateLocal(sudoku,&localStack,coords);
+                            continue;
+                        }
+                        for (int i = 1; i <= boardSize; i++) {
+                            if (current.options[i] == 1) {
+                                current.options[i] = 0;
+                                current.options[0]--;
+                                sudoku.grid[coords[0]][coords[1]] = current;
+                                board newBoard = sudoku;
+                                cell newCell = current;
+                                newCell.val = i;
+                                newBoard.grid[coords[0]][coords[1]] = newCell;
+                                newBoard = reduceOptions(newBoard,i,coords[0],coords[1]);
+
+                                localStack.push(sudoku);
+                                localStack.push(newBoard);
+                                break;
+                            }
+                        }
+                        if (localStack.size() > 20) {
+                            while (!localStack.empty()) {
+                                board item = localStack.top();
+                                reverseStack.push(item);
+                                localStack.pop();
+                            }
+
+                            omp_set_lock (&stackLock);
+                            while (!reverseStack.empty()) {
+                                board item = reverseStack.top();
+                                boardStack.push(item);
+                                reverseStack.pop();
+                            }
+                            omp_unset_lock (&stackLock);
+                        }
+                    }
+                    else {
+                        solved = true;
+                        #pragma omp flush(solved)
+                        #pragma omp cancel parallel
+                        auto end = std::chrono::steady_clock::now();
+                        std::cout << "           Solved!\n";
+                        std::cout << "================================\n";
+                        std::cout << "Puzzle: " << filename << "\n";
+                        std::cout << "Threadcount: " << omp_get_num_threads() << "\n";
+                        std::chrono::duration<double> timeElapsed = end-start;
+                        std::cout << "Time Elapsed (sec): [  " << timeElapsed.count() << "  ]\n";
+                        std::cout << "================================\n";
+                        printBoard(sudoku);
+                        exit(0);
+                    }
                 }
+                else omp_unset_lock (&stackLock);
             }
-        else omp_unset_lock (&stackLock);
         }
-        }
+        
     }
 
     if (!solved) std::cout << "Couldn't solve. Consider checking this algorithm for errors.\n";
