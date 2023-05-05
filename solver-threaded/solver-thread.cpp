@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
     bool solved = false;
     std::stack<board> boardStack;
     omp_init_lock (&stackLock);
-    std::string filename = "test-standard-medium.txt";
+    std::string filename = "test-standard-hard.txt";
     loadFromFile(filename, initial);
 
     auto start = std::chrono::steady_clock::now();
